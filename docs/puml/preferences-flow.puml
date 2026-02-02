@@ -1,0 +1,38 @@
+@startuml preferences-flow
+title Preferences Data Flow
+
+participant "UI Screen" as UI
+participant "PreferencesViewModel" as VM
+participant "DataStore" as DS
+database "preferences.pb" as File
+
+== Read Preferences ==
+UI -> VM: collectAsState()
+VM -> DS: data.map { preferences }
+DS -> File: Read protobuf
+File --> DS: PreferencesProto
+DS --> VM: Flow<Preferences>
+VM --> UI: PreferencesUiState
+
+== Write Preference ==
+UI -> VM: setPreference(key, value)
+VM -> DS: updateData { prefs -> }
+DS -> File: Write protobuf
+File --> DS: Success
+DS --> VM: Updated Flow
+VM --> UI: New PreferencesUiState
+
+== Model Selection Example ==
+note over UI: User selects model
+UI -> VM: setPreference(\n  selectedModelId,\n  "large-v3-turbo-q5_0"\n)
+VM -> DS: updateData { it.copy(\n  selectedModelId = value\n)}
+DS --> VM: Flow emits new value
+VM --> UI: UI recomposes with\nnew selected model
+
+== Preferences Keys ==
+note right of DS
+  selectedModelId: String
+  (Other app preferences...)
+end note
+
+@enduml

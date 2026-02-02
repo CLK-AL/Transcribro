@@ -1,0 +1,109 @@
+@startuml model-classes
+title Model Manager Class Diagram
+
+package "modelmanager" {
+
+    class WhisperModel {
+        +id: String
+        +displayName: String
+        +description: String
+        +languages: List<String>
+        +sizeBytes: Long
+        +downloadUrl: String
+        +fileName: String
+        +quantization: String?
+    }
+
+    object AvailableModels {
+        +TINY_MULTILINGUAL: WhisperModel
+        +TINY_EN: WhisperModel
+        +BASE_MULTILINGUAL: WhisperModel
+        +SMALL_MULTILINGUAL: WhisperModel
+        +MEDIUM_MULTILINGUAL: WhisperModel
+        +LARGE_V2: WhisperModel
+        +LARGE_V3: WhisperModel
+        +LARGE_V3_TURBO: WhisperModel
+        +HEBREW_IVRIT_Q2K: WhisperModel
+        +HEBREW_IVRIT_V3: WhisperModel
+        --
+        +ALL_MODELS: List<WhisperModel>
+        +getById(id): WhisperModel?
+        +getDefault(): WhisperModel
+        +formatSize(bytes): String
+    }
+
+    enum ModelSource {
+        WHISPER_CPP
+        IVRIT_GGML
+        IVRIT_AI_V3
+        IVRIT_AI_V3_TURBO
+        --
+        +repoOwner: String
+        +repoName: String
+        +branch: String
+        +apiUrl: String
+        +downloadBaseUrl: String
+    }
+
+    class RemoteFile {
+        +fileName: String
+        +path: String
+        +sizeBytes: Long
+        +downloadUrl: String
+        +source: ModelSource
+    }
+
+    class DownloadedFile {
+        +fileName: String
+        +sizeBytes: Long
+        +matchedModel: WhisperModel?
+        +matchedRemoteFile: RemoteFile?
+    }
+
+    object RemoteModelSource {
+        +fetchModelsFromSource(source): Result<List<RemoteFile>>
+        +fetchAllRemoteModels(): Map<ModelSource, Result<List<RemoteFile>>>
+        +findRemoteMatch(fileName, files): RemoteFile?
+        +findRemoteMatchForModel(model, files): RemoteFile?
+        +needsUpdate(localSize, remote): Boolean
+    }
+
+    abstract class DownloadState {
+    }
+    class Idle extends DownloadState
+    class Checking extends DownloadState
+    class UpdateAvailable extends DownloadState
+    class UpToDate extends DownloadState
+    class Downloading extends DownloadState {
+        +progress: Float
+    }
+    class Completed extends DownloadState
+    class Error extends DownloadState {
+        +message: String
+    }
+
+    class ModelDownloadManager {
+        -context: Context
+        -modelsDir: File
+        -downloadStates: MutableStateFlow<Map>
+        -cachedRemoteFiles: List<RemoteFile>
+        --
+        +downloadModel(model): Unit
+        +deleteModel(model): Boolean
+        +isModelDownloaded(model): Boolean
+        +listDownloadedFiles(): List<DownloadedFile>
+        +checkForUpdates(): Unit
+        +getOrphanedFiles(): List<DownloadedFile>
+        +deleteOrphanedFiles(): Unit
+    }
+
+    AvailableModels *-- WhisperModel
+    RemoteFile --> ModelSource
+    DownloadedFile --> WhisperModel
+    DownloadedFile --> RemoteFile
+    ModelDownloadManager --> DownloadState
+    ModelDownloadManager --> RemoteModelSource
+    ModelDownloadManager --> DownloadedFile
+}
+
+@enduml

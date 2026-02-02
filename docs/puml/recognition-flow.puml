@@ -1,0 +1,53 @@
+@startuml recognition-flow
+title Speech Recognition Flow
+
+actor User
+participant "Keyboard/App" as App
+participant "MainRecognitionService" as Service
+participant "SileroVAD" as VAD
+participant "WhisperRepository" as Repo
+participant "WhisperContext" as Context
+participant "whisper.cpp (JNI)" as Native
+
+== Initialization ==
+App -> Service: startListening()
+Service -> Repo: getWhisperContext()
+Repo -> Context: Load model from preferences
+Context -> Native: initContext(modelPath)
+Native --> Context: contextPtr
+
+== Audio Capture ==
+loop Recording
+    Service -> Service: Record 16kHz PCM audio
+    Service -> VAD: detectSpeech(audioChunk)
+    alt Speech detected
+        VAD --> Service: isSpeaking = true
+        Service -> Service: Buffer audio
+    else Silence detected
+        VAD --> Service: isSpeaking = false
+        Service -> Service: End segment
+    end
+end
+
+== Transcription ==
+Service -> Repo: transcribeAudio(audioBuffer)
+Repo -> Repo: Convert ShortArray to FloatArray
+Repo -> Repo: Normalize to [-1.0, 1.0]
+Repo -> Repo: Pad if < 2 seconds
+Repo -> Context: transcribeData(floatArray)
+Context -> Native: fullTranscribe(contextPtr, audio)
+Native -> Native: Run Whisper inference
+Native --> Context: segmentCount
+loop For each segment
+    Context -> Native: getTextSegment(index)
+    Native --> Context: text
+end
+Context --> Repo: transcription
+Repo -> Repo: Remove hallucination artifacts
+Repo --> Service: cleanedText
+
+== Result Delivery ==
+Service --> App: onResult(transcription)
+App -> App: Insert text
+
+@enduml

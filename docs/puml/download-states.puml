@@ -1,0 +1,61 @@
+@startuml download-states
+title Model Download State Machine
+
+[*] --> Idle
+
+state Idle {
+    Idle: Model not downloaded
+    Idle: or no action in progress
+}
+
+state Checking {
+    Checking: Comparing with remote
+    Checking: Fetching file metadata
+}
+
+state UpdateAvailable {
+    UpdateAvailable: Remote file differs
+    UpdateAvailable: from local version
+}
+
+state UpToDate {
+    UpToDate: Local matches remote
+    UpToDate: No action needed
+}
+
+state Downloading {
+    Downloading: Fetching from HuggingFace
+    Downloading: progress: Float (0.0-1.0)
+}
+
+state Completed {
+    Completed: Download finished
+    Completed: File saved to storage
+}
+
+state Error {
+    Error: message: String
+    Error: Network or IO failure
+}
+
+Idle --> Checking : checkForUpdates()
+Idle --> Downloading : downloadModel()
+
+Checking --> UpdateAvailable : sizeMismatch
+Checking --> UpToDate : sizeMatch
+Checking --> Error : networkError
+
+UpdateAvailable --> Downloading : downloadModel()
+UpdateAvailable --> Idle : dismiss
+
+UpToDate --> Idle : timeout
+
+Downloading --> Downloading : progress update
+Downloading --> Completed : success
+Downloading --> Error : failure
+
+Completed --> Idle : reset
+Error --> Idle : dismiss
+Error --> Downloading : retry
+
+@enduml
