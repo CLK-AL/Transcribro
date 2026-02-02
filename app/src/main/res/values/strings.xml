@@ -46,7 +46,9 @@
     <string name="model_selected">Selected</string>
     <string name="model_downloading">Downloading…</string>
     <string name="model_download_error">Download failed</string>
-    <string name="model_built_in">Built-in</string>
     <string name="model_downloaded">Downloaded</string>
     <string name="model_not_downloaded">Not downloaded</string>
+    <string name="model_check_updates">Check for Updates</string>
+    <string name="model_checking_updates">Checking…</string>
+    <string name="model_update_available">Update available - tap to download</string>
 </resources>

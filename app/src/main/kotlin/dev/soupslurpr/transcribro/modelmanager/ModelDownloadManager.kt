@@ -19,6 +19,8 @@ sealed class DownloadState {
     data class Downloading(val progress: Float, val bytesDownloaded: Long, val totalBytes: Long) : DownloadState()
     data object Completed : DownloadState()
     data class Error(val message: String) : DownloadState()
+    data object UpdateAvailable : DownloadState()
+    data object Checking : DownloadState()
 }
 
 /**
@@ -33,11 +35,13 @@ class ModelDownloadManager(private val context: Context) {
     private val _downloadStates = MutableStateFlow<Map<String, DownloadState>>(emptyMap())
     val downloadStates: Flow<Map<String, DownloadState>> = _downloadStates.asStateFlow()
 
+    private val _isCheckingUpdates = MutableStateFlow(false)
+    val isCheckingUpdates: Flow<Boolean> = _isCheckingUpdates.asStateFlow()
+
     /**
      * Check if a model is downloaded and available.
      */
     fun isModelDownloaded(model: WhisperModel): Boolean {
-        if (model.isBuiltIn) return true
         val modelFile = File(modelsDir, model.fileName)
         return modelFile.exists() && modelFile.length() > 0
     }
@@ -47,9 +51,6 @@ class ModelDownloadManager(private val context: Context) {
      * Returns null if the model is not downloaded.
      */
     fun getModelPath(model: WhisperModel): String? {
-        if (model.isBuiltIn) {
-            return null // Built-in models are loaded from assets
-        }
         val modelFile = File(modelsDir, model.fileName)
         return if (modelFile.exists()) modelFile.absolutePath else null
     }
@@ -69,13 +70,54 @@ class ModelDownloadManager(private val context: Context) {
     }
 
     /**
+     * Check for updates for all downloaded models.
+     * Compares local file size with remote content-length.
+     */
+    suspend fun checkForUpdates(): Map<String, Boolean> = withContext(Dispatchers.IO) {
+        _isCheckingUpdates.value = true
+        val updates = mutableMapOf<String, Boolean>()
+
+        try {
+            getDownloadedModels().forEach { model ->
+                updateDownloadState(model.id, DownloadState.Checking)
+                try {
+                    val localFile = File(modelsDir, model.fileName)
+                    val localSize = localFile.length()
+
+                    val url = URL(model.downloadUrl)
+                    val connection = url.openConnection() as HttpURLConnection
+                    connection.requestMethod = "HEAD"
+                    connection.connectTimeout = 10_000
+                    connection.setRequestProperty("User-Agent", "Transcribro-Android")
+
+                    val remoteSize = connection.contentLengthLong
+                    connection.disconnect()
+
+                    // If remote size differs significantly (>1KB), mark as update available
+                    val hasUpdate = remoteSize > 0 && kotlin.math.abs(remoteSize - localSize) > 1024
+                    updates[model.id] = hasUpdate
+
+                    if (hasUpdate) {
+                        updateDownloadState(model.id, DownloadState.UpdateAvailable)
+                    } else {
+                        updateDownloadState(model.id, DownloadState.Completed)
+                    }
+                } catch (e: Exception) {
+                    updates[model.id] = false
+                    updateDownloadState(model.id, DownloadState.Completed)
+                }
+            }
+        } finally {
+            _isCheckingUpdates.value = false
+        }
+
+        updates
+    }
+
+    /**
      * Download a model.
      */
     suspend fun downloadModel(model: WhisperModel): Result<File> = withContext(Dispatchers.IO) {
-        if (model.isBuiltIn) {
-            return@withContext Result.failure(IllegalArgumentException("Cannot download built-in model"))
-        }
-
         val modelFile = File(modelsDir, model.fileName)
         val tempFile = File(modelsDir, "${model.fileName}.tmp")
 
@@ -134,8 +176,6 @@ class ModelDownloadManager(private val context: Context) {
      * Delete a downloaded model.
      */
     fun deleteModel(model: WhisperModel): Boolean {
-        if (model.isBuiltIn) return false
-
         val modelFile = File(modelsDir, model.fileName)
         val deleted = modelFile.delete()
 

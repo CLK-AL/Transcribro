@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +45,7 @@ fun ModelSelectionScreen() {
 
     val modelDownloadManager = remember { ModelDownloadManager(context) }
     val downloadStates by modelDownloadManager.downloadStates.collectAsState(initial = emptyMap())
+    val isCheckingUpdates by modelDownloadManager.isCheckingUpdates.collectAsState(initial = false)
     val coroutineScope = rememberCoroutineScope()
 
     ScreenLazyColumn(
@@ -56,6 +58,29 @@ fun ModelSelectionScreen() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
+        }
+
+        // Check for updates button
+        item {
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        modelDownloadManager.checkForUpdates()
+                    }
+                },
+                enabled = !isCheckingUpdates,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Text(
+                    text = if (isCheckingUpdates) {
+                        "\uD83D\uDD04 ${stringResource(R.string.model_checking_updates)}" // 🔄
+                    } else {
+                        "\uD83D\uDD04 ${stringResource(R.string.model_check_updates)}" // 🔄
+                    }
+                )
+            }
         }
 
         items(AvailableModels.ALL_MODELS.size) { index ->
@@ -77,14 +102,14 @@ fun ModelSelectionScreen() {
                                 preferencesUiState.selectedModelId.first,
                                 model.id
                             )
-                        } else if (!model.isBuiltIn) {
+                        } else {
                             // Download model
                             coroutineScope.launch {
                                 modelDownloadManager.downloadModel(model)
                             }
                         }
                     } else {
-                        if (!model.isBuiltIn && isDownloaded) {
+                        if (isDownloaded) {
                             // Delete model
                             modelDownloadManager.deleteModel(model)
                             // If deleted model was selected, switch to default
@@ -95,6 +120,11 @@ fun ModelSelectionScreen() {
                                 )
                             }
                         }
+                    }
+                },
+                onUpdate = {
+                    coroutineScope.launch {
+                        modelDownloadManager.downloadModel(model)
                     }
                 }
             )
@@ -136,19 +166,24 @@ fun ModelRow(
     isSelected: Boolean,
     isDownloaded: Boolean,
     downloadState: DownloadState,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    onUpdate: () -> Unit
 ) {
     val isDownloading = downloadState is DownloadState.Downloading
+    val isChecking = downloadState is DownloadState.Checking
+    val hasUpdate = downloadState is DownloadState.UpdateAvailable
     val languageEmoji = getLanguageEmoji(model.languages)
     val quantEmoji = getQuantizationEmoji(model.quantization)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = !isDownloading) {
-                if (isDownloaded) {
+            .clickable(enabled = !isDownloading && !isChecking) {
+                if (hasUpdate) {
+                    onUpdate()
+                } else if (isDownloaded) {
                     onCheckedChange(true) // Select
-                } else if (!model.isBuiltIn) {
+                } else {
                     onCheckedChange(true) // Download
                 }
             }
@@ -163,11 +198,11 @@ fun ModelRow(
             Checkbox(
                 checked = isDownloaded,
                 onCheckedChange = { checked ->
-                    if (!isDownloading) {
+                    if (!isDownloading && !isChecking) {
                         onCheckedChange(checked)
                     }
                 },
-                enabled = !isDownloading && !model.isBuiltIn
+                enabled = !isDownloading && !isChecking
             )
 
             // Model info
@@ -208,9 +243,15 @@ fun ModelRow(
 
             // Status indicator
             when {
-                model.isBuiltIn -> {
+                isChecking -> {
                     Text(
-                        text = "\uD83D\uDCE6", // 📦
+                        text = "\uD83D\uDD04", // 🔄
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                hasUpdate -> {
+                    Text(
+                        text = "\uD83C\uDD99", // 🆙
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -248,6 +289,16 @@ fun ModelRow(
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
+        }
+
+        // Update available indicator
+        if (hasUpdate) {
+            Text(
+                text = "\uD83C\uDD99 ${stringResource(R.string.model_update_available)}", // 🆙
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 48.dp, top = 4.dp)
+            )
         }
 
         // Error state

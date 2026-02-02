@@ -84,26 +84,24 @@ class MainRecognitionService : RecognitionService() {
                         val model = AvailableModels.getById(selectedModelId)
                             ?: AvailableModels.getDefault()
 
-                        return if (model.isBuiltIn) {
-                            // Load built-in model from assets
-                            WhisperContext.createContextFromAsset(
-                                application.assets,
-                                "models/whisper/${model.fileName}"
-                            )
-                        } else {
-                            // Load downloaded model from file
-                            val modelPath = modelDownloadManager.getModelPath(model)
-                            if (modelPath != null) {
-                                WhisperContext.createContextFromFile(modelPath)
-                            } else {
-                                // Model not downloaded, fall back to default
-                                val defaultModel = AvailableModels.getDefault()
-                                WhisperContext.createContextFromAsset(
-                                    application.assets,
-                                    "models/whisper/${defaultModel.fileName}"
-                                )
+                        // Try to load the selected model
+                        val modelPath = modelDownloadManager.getModelPath(model)
+                        if (modelPath != null) {
+                            return WhisperContext.createContextFromFile(modelPath)
+                        }
+
+                        // Selected model not downloaded, try to find any downloaded model
+                        val downloadedModels = modelDownloadManager.getDownloadedModels()
+                        if (downloadedModels.isNotEmpty()) {
+                            val fallbackModel = downloadedModels.first()
+                            val fallbackPath = modelDownloadManager.getModelPath(fallbackModel)
+                            if (fallbackPath != null) {
+                                return WhisperContext.createContextFromFile(fallbackPath)
                             }
                         }
+
+                        // No models downloaded - throw exception
+                        throw IllegalStateException("No speech recognition model downloaded. Please download a model in Settings.")
                     }
                 },
                 ioDispatcher = Dispatchers.IO,

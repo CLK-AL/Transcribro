@@ -11,7 +11,6 @@ data class WhisperModel(
     val sizeBytes: Long,
     val downloadUrl: String,
     val fileName: String,
-    val isBuiltIn: Boolean = false,
     val quantization: String? = null,
 )
 
@@ -23,32 +22,15 @@ object AvailableModels {
     private const val WHISPER_CPP_BASE_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
     private const val IVRIT_GGML_BASE_URL = "https://huggingface.co/thewh1teagle/ivrit-ggml/resolve/main"
 
-    // ==================== Built-in Model ====================
-
-    /**
-     * Built-in English model (bundled with the app).
-     */
-    val TINY_EN_Q8 = WhisperModel(
-        id = "tiny.en-q8_0",
-        displayName = "Tiny English",
-        description = "Fast, English-only. Bundled with app.",
-        languages = listOf("en"),
-        sizeBytes = 42_000_000L, // ~42 MB
-        downloadUrl = "", // Built-in
-        fileName = "ggml-model-whisper-tiny.en-q8_0.bin",
-        isBuiltIn = true,
-        quantization = "q8_0"
-    )
-
     // ==================== Tiny Models ====================
 
     /**
-     * Multilingual tiny model - supports 99 languages.
+     * Multilingual tiny model - supports 99 languages. DEFAULT MODEL.
      */
     val TINY_MULTILINGUAL = WhisperModel(
         id = "tiny-q5_0",
         displayName = "Tiny Multilingual",
-        description = "Fastest multilingual. Supports 99 languages.",
+        description = "Fastest multilingual. Supports 99 languages. Default.",
         languages = listOf("multilingual"),
         sizeBytes = 26_000_000L, // ~26 MB
         downloadUrl = "$WHISPER_CPP_BASE_URL/ggml-tiny-q5_0.bin",
@@ -57,17 +39,31 @@ object AvailableModels {
     )
 
     /**
-     * English-only tiny model (downloadable version).
+     * English-only tiny model.
      */
-    val TINY_EN_Q5 = WhisperModel(
+    val TINY_EN = WhisperModel(
         id = "tiny.en-q5_0",
-        displayName = "Tiny English (Q5)",
-        description = "Fastest English-only. Smaller file size.",
+        displayName = "Tiny English",
+        description = "Fastest English-only.",
         languages = listOf("en"),
         sizeBytes = 22_000_000L, // ~22 MB
         downloadUrl = "$WHISPER_CPP_BASE_URL/ggml-tiny.en-q5_0.bin",
         fileName = "ggml-tiny.en-q5_0.bin",
         quantization = "q5_0"
+    )
+
+    /**
+     * Multilingual tiny model - higher quality.
+     */
+    val TINY_MULTILINGUAL_Q8 = WhisperModel(
+        id = "tiny-q8_0",
+        displayName = "Tiny Multilingual (Q8)",
+        description = "Better quality tiny. 99 languages.",
+        languages = listOf("multilingual"),
+        sizeBytes = 42_000_000L, // ~42 MB
+        downloadUrl = "$WHISPER_CPP_BASE_URL/ggml-tiny-q8_0.bin",
+        fileName = "ggml-tiny-q8_0.bin",
+        quantization = "q8_0"
     )
 
     // ==================== Base Models ====================
@@ -266,11 +262,10 @@ object AvailableModels {
      * All available models grouped by category.
      */
     val ALL_MODELS = listOf(
-        // Built-in
-        TINY_EN_Q8,
-        // Tiny
+        // Tiny (default first)
         TINY_MULTILINGUAL,
-        TINY_EN_Q5,
+        TINY_EN,
+        TINY_MULTILINGUAL_Q8,
         // Base
         BASE_EN,
         BASE_MULTILINGUAL,
@@ -297,9 +292,9 @@ object AvailableModels {
     fun getById(id: String): WhisperModel? = ALL_MODELS.find { it.id == id }
 
     /**
-     * Get the default model.
+     * Get the default model (Tiny Multilingual).
      */
-    fun getDefault(): WhisperModel = TINY_EN_Q8
+    fun getDefault(): WhisperModel = TINY_MULTILINGUAL
 
     /**
      * Format file size for display.
