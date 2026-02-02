@@ -8,7 +8,18 @@ may use for speech to text.
 
 ## Language support
 
-Transcribro currently only supports English. However, supporting other languages is planned and tracked in https://github.com/soupslurpr/Transcribro/issues/18.
+Transcribro supports 99 languages through OpenAI Whisper multilingual models. Download models in-app based on your needs:
+
+| Model | Size | Languages | Notes |
+|-------|------|-----------|-------|
+| Tiny Multilingual | ~26 MB | 99 languages | Default, fastest |
+| Base/Small/Medium | 48-514 MB | 99 languages | Better accuracy |
+| Large V3 Turbo | ~547 MB | 99 languages | Best speed/accuracy balance |
+| Large V2/V3 | ~1 GB | 99 languages | Highest accuracy |
+| English-only | 22-514 MB | English | Optimized for English |
+| Hebrew (Ivrit AI) | 529 MB - 2.9 GB | Hebrew, English | Fine-tuned for Hebrew |
+
+Models are downloaded from HuggingFace ([ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp), [ivrit-ai](https://huggingface.co/ivrit-ai)).
 
 ## Future work
 
