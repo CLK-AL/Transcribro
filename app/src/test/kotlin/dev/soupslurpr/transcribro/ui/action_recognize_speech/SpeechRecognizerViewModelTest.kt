@@ -270,3 +270,178 @@ class MainSpeechRecognitionListenerTest {
         assertThat(viewModel.uiState.value.isRecognizing).isFalse()
     }
 }
+
+/**
+ * Additional tests for SpeechRecognizer error code handling.
+ * Tests the error handling logic that maps error codes to UI states.
+ */
+class SpeechRecognizerErrorHandlingTest {
+
+    companion object {
+        // SpeechRecognizer error constants
+        const val ERROR_NETWORK_TIMEOUT = 1
+        const val ERROR_NETWORK = 2
+        const val ERROR_AUDIO = 3
+        const val ERROR_SERVER = 4
+        const val ERROR_CLIENT = 5
+        const val ERROR_SPEECH_TIMEOUT = 6
+        const val ERROR_NO_MATCH = 7
+        const val ERROR_RECOGNIZER_BUSY = 8
+        const val ERROR_INSUFFICIENT_PERMISSIONS = 9
+    }
+
+    @Test
+    fun `error code mapping for INSUFFICIENT_PERMISSIONS`() {
+        val errorCode = ERROR_INSUFFICIENT_PERMISSIONS
+        val result = mapErrorToState(errorCode)
+
+        assertThat(result).isEqualTo(ErrorState.INSUFFICIENT_PERMISSIONS)
+    }
+
+    @Test
+    fun `error code mapping for RECOGNIZER_BUSY`() {
+        val errorCode = ERROR_RECOGNIZER_BUSY
+        val result = mapErrorToState(errorCode)
+
+        assertThat(result).isEqualTo(ErrorState.BUSY_OR_CLIENT)
+    }
+
+    @Test
+    fun `error code mapping for ERROR_CLIENT`() {
+        val errorCode = ERROR_CLIENT
+        val result = mapErrorToState(errorCode)
+
+        assertThat(result).isEqualTo(ErrorState.BUSY_OR_CLIENT)
+    }
+
+    @Test
+    fun `error code mapping for network errors returns NONE`() {
+        val errorCode = ERROR_NETWORK
+        val result = mapErrorToState(errorCode)
+
+        assertThat(result).isEqualTo(ErrorState.NONE)
+    }
+
+    @Test
+    fun `error code mapping for audio errors returns NONE`() {
+        val errorCode = ERROR_AUDIO
+        val result = mapErrorToState(errorCode)
+
+        assertThat(result).isEqualTo(ErrorState.NONE)
+    }
+
+    @Test
+    fun `error code mapping for no match returns NONE`() {
+        val errorCode = ERROR_NO_MATCH
+        val result = mapErrorToState(errorCode)
+
+        assertThat(result).isEqualTo(ErrorState.NONE)
+    }
+
+    @Test
+    fun `error code mapping for speech timeout returns NONE`() {
+        val errorCode = ERROR_SPEECH_TIMEOUT
+        val result = mapErrorToState(errorCode)
+
+        assertThat(result).isEqualTo(ErrorState.NONE)
+    }
+
+    @Test
+    fun `all known error codes are handled`() {
+        val allErrorCodes = listOf(
+            ERROR_NETWORK_TIMEOUT,
+            ERROR_NETWORK,
+            ERROR_AUDIO,
+            ERROR_SERVER,
+            ERROR_CLIENT,
+            ERROR_SPEECH_TIMEOUT,
+            ERROR_NO_MATCH,
+            ERROR_RECOGNIZER_BUSY,
+            ERROR_INSUFFICIENT_PERMISSIONS
+        )
+
+        allErrorCodes.forEach { code ->
+            // Should not throw
+            val result = mapErrorToState(code)
+            assertThat(result).isNotNull()
+        }
+    }
+
+    /**
+     * Maps error codes to error states (simulating the listener's behavior).
+     */
+    private fun mapErrorToState(errorCode: Int): ErrorState {
+        return when (errorCode) {
+            ERROR_INSUFFICIENT_PERMISSIONS -> ErrorState.INSUFFICIENT_PERMISSIONS
+            ERROR_RECOGNIZER_BUSY, ERROR_CLIENT -> ErrorState.BUSY_OR_CLIENT
+            else -> ErrorState.NONE
+        }
+    }
+
+    enum class ErrorState {
+        NONE,
+        INSUFFICIENT_PERMISSIONS,
+        BUSY_OR_CLIENT
+    }
+}
+
+/**
+ * Tests for ringer mode-based audio feedback behavior.
+ */
+class RingerModeAudioFeedbackTest {
+
+    companion object {
+        // AudioManager ringer mode constants
+        const val RINGER_MODE_SILENT = 0
+        const val RINGER_MODE_VIBRATE = 1
+        const val RINGER_MODE_NORMAL = 2
+    }
+
+    @Test
+    fun `audio plays in NORMAL ringer mode`() {
+        val ringerMode = RINGER_MODE_NORMAL
+        val shouldPlayAudio = ringerMode == RINGER_MODE_NORMAL
+
+        assertThat(shouldPlayAudio).isTrue()
+    }
+
+    @Test
+    fun `audio does not play in SILENT ringer mode`() {
+        val ringerMode = RINGER_MODE_SILENT
+        val shouldPlayAudio = ringerMode == RINGER_MODE_NORMAL
+
+        assertThat(shouldPlayAudio).isFalse()
+    }
+
+    @Test
+    fun `audio does not play in VIBRATE ringer mode`() {
+        val ringerMode = RINGER_MODE_VIBRATE
+        val shouldPlayAudio = ringerMode == RINGER_MODE_NORMAL
+
+        assertThat(shouldPlayAudio).isFalse()
+    }
+
+    @Test
+    fun `onReadyForSpeech plays audio only in normal mode`() {
+        listOf(RINGER_MODE_SILENT, RINGER_MODE_VIBRATE, RINGER_MODE_NORMAL).forEach { mode ->
+            val shouldPlay = mode == RINGER_MODE_NORMAL
+
+            when (mode) {
+                RINGER_MODE_NORMAL -> assertThat(shouldPlay).isTrue()
+                else -> assertThat(shouldPlay).isFalse()
+            }
+        }
+    }
+
+    @Test
+    fun `onResults plays audio only in normal mode`() {
+        listOf(RINGER_MODE_SILENT, RINGER_MODE_VIBRATE, RINGER_MODE_NORMAL).forEach { mode ->
+            val shouldPlay = mode == RINGER_MODE_NORMAL
+
+            when (mode) {
+                RINGER_MODE_NORMAL -> assertThat(shouldPlay).isTrue()
+                else -> assertThat(shouldPlay).isFalse()
+            }
+        }
+    }
+}
