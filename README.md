@@ -21,6 +21,35 @@ Transcribro supports 99 languages through OpenAI Whisper multilingual models. Do
 
 Models are downloaded from HuggingFace ([ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp), [ivrit-ai](https://huggingface.co/ivrit-ai)).
 
+## Model management
+
+The Model Selection screen (Settings > Model Selection) allows you to:
+
+- **Download models**: Tap checkbox to download a model from HuggingFace
+- **Select active model**: Tap a downloaded model to use it for transcription
+- **Check for updates**: Sync with remote sources to detect model updates
+- **View disk usage**: See total size of downloaded models
+- **Manage files**: View and delete orphaned files
+
+### UI indicators
+
+| Icon | Meaning |
+|------|---------|
+| ⬇️ | Available for download |
+| ⏳ | Downloading |
+| ✅ | Downloaded |
+| ✓ | Currently selected |
+| 🆙 | Update available |
+| 🌍 | Multilingual model |
+| 🇺🇸 | English-only model |
+| 🇮🇱 | Hebrew model |
+| 2️⃣-8️⃣ | Quantization level |
+| 📄 | Known model file |
+| 🔗 | Matches remote source |
+| ⚠️ | Orphaned file |
+
+Architecture diagrams available in [docs/puml/](docs/puml/).
+
 ## Future work
 
 - **CTranslate2/Faster Whisper support**: Currently uses whisper.cpp with GGML format models. CTranslate2 (used by Faster Whisper) offers potentially faster inference but lacks Android NDK support as of 2026. If CTranslate2 adds Android support in the future, CT2 format models could be integrated as an alternative inference engine.

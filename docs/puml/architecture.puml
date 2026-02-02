@@ -1,0 +1,62 @@
+@startuml architecture
+title Transcribro Architecture
+
+skinparam componentStyle rectangle
+
+package "UI Layer" {
+    [StartScreen] as Start
+    [SettingsStartScreen] as Settings
+    [ModelSelectionScreen] as ModelUI
+    [ActionRecognizeSpeechScreen] as SpeechUI
+}
+
+package "Model Manager" {
+    [ModelDownloadManager] as DownloadMgr
+    [RemoteModelSource] as RemoteSource
+    [WhisperModel] as Models
+    [DownloadState] as DLState
+}
+
+package "Recognition Service" {
+    [MainRecognitionService] as RecService
+    [WhisperRepository] as WhisperRepo
+    [WhisperLocalDataSource] as DataSource
+    [SileroVAD] as VAD
+}
+
+package "Native Layer (JNI)" {
+    [whisper.cpp] as Whisper
+    [LibWhisper.kt] as LibWhisper
+}
+
+package "Storage" {
+    database "DataStore\n(Preferences)" as Prefs
+    database "Models Dir\n(.bin files)" as ModelFiles
+}
+
+cloud "HuggingFace" as HF {
+    [ggerganov/whisper.cpp]
+    [ivrit-ai repos]
+}
+
+Start --> Settings
+Settings --> ModelUI
+ModelUI --> DownloadMgr
+DownloadMgr --> RemoteSource
+RemoteSource --> HF
+DownloadMgr --> ModelFiles
+DownloadMgr --> Models
+DownloadMgr --> DLState
+
+SpeechUI --> RecService
+RecService --> WhisperRepo
+RecService --> VAD
+WhisperRepo --> DataSource
+DataSource --> LibWhisper
+LibWhisper --> Whisper
+WhisperRepo --> ModelFiles
+RecService --> Prefs
+
+ModelUI --> Prefs
+
+@enduml

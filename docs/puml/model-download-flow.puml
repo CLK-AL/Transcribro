@@ -1,0 +1,44 @@
+@startuml model-download-flow
+title Model Download Flow
+
+actor User
+participant "ModelSelectionScreen" as UI
+participant "ModelDownloadManager" as Manager
+participant "RemoteModelSource" as Remote
+database "HuggingFace" as HF
+database "Local Storage" as Storage
+
+== Check for Updates ==
+User -> UI: Tap "Check for Updates"
+UI -> Manager: checkForUpdates()
+Manager -> Remote: fetchAllRemoteModels()
+loop For each ModelSource
+    Remote -> HF: GET /api/models/{owner}/{repo}/tree/main
+    HF --> Remote: JSON file list
+end
+Remote --> Manager: Map<ModelSource, List<RemoteFile>>
+Manager -> Manager: Compare local files with remote
+Manager --> UI: Update downloadStates (UpdateAvailable/UpToDate)
+
+== Download Model ==
+User -> UI: Select model checkbox
+UI -> Manager: downloadModel(model)
+Manager -> HF: Download .bin file
+note right: Streams to local storage\nwith progress updates
+Manager --> UI: DownloadState.Downloading(progress)
+HF --> Manager: Complete
+Manager -> Storage: Save model file
+Manager --> UI: DownloadState.Completed
+
+== Select Model ==
+User -> UI: Tap downloaded model
+UI -> PreferencesViewModel: setPreference(selectedModelId)
+note right: Stored in DataStore
+
+== Delete Model ==
+User -> UI: Uncheck downloaded model
+UI -> Manager: deleteModel(model)
+Manager -> Storage: Delete file
+Manager --> UI: Refresh file list
+
+@enduml

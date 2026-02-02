@@ -1,0 +1,62 @@
+@startuml ui-navigation
+title UI Navigation
+
+state "StartScreen" as Start {
+    Start: Main entry point
+    Start: - Setup instructions
+    Start: - Enable keyboard
+}
+
+state "SettingsStartScreen" as Settings {
+    Settings: App settings
+    Settings: - Model Selection
+    Settings: - Credits
+    Settings: - License
+    Settings: - Privacy Policy
+}
+
+state "ModelSelectionScreen" as ModelSelect {
+    state "Available Models" as Models {
+        Models: Shows all downloadable models
+        Models: - Checkbox to download/delete
+        Models: - Language flags
+        Models: - Quantization level
+        Models: - Size info
+    }
+    state "Files on Disk" as Files {
+        Files: Lists downloaded files
+        Files: - Known models
+        Files: - Remote matches
+        Files: - Orphaned files
+    }
+    state "Actions" as Actions {
+        Actions: - Check for Updates
+        Actions: - Delete Orphaned Files
+    }
+}
+
+state "ActionRecognizeSpeechScreen" as Speech {
+    Speech: Voice input UI
+    Speech: - Microphone button
+    Speech: - Transcription display
+}
+
+state "Keyboard IME" as Keyboard {
+    Keyboard: Voice input keyboard
+    Keyboard: - Integrated with apps
+}
+
+[*] --> Start
+Start --> Settings : Navigate
+Settings --> ModelSelect : Model Selection
+Settings --> Start : Back
+
+ModelSelect --> Settings : Back
+Models --> Files
+Files --> Actions
+
+Start --> Keyboard : Enable IME
+Keyboard --> Speech : Voice input
+Speech --> Keyboard : Return text
+
+@enduml
