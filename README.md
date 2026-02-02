@@ -10,6 +10,10 @@ may use for speech to text.
 
 Transcribro currently only supports English. However, supporting other languages is planned and tracked in https://github.com/soupslurpr/Transcribro/issues/18.
 
+## Future work
+
+- **CTranslate2/Faster Whisper support**: Currently uses whisper.cpp with GGML format models. CTranslate2 (used by Faster Whisper) offers potentially faster inference but lacks Android NDK support as of 2026. If CTranslate2 adds Android support in the future, CT2 format models could be integrated as an alternative inference engine.
+
 ## Download
 
 Transcribro is available on the [Accrescent](https://accrescent.app) app store and GitHub releases.\
