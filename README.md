@@ -48,7 +48,19 @@ The Model Selection screen (Settings > Model Selection) allows you to:
 | 🔗 | Matches remote source |
 | ⚠️ | Orphaned file |
 
-Architecture diagrams available in [docs/puml/](docs/puml/).
+### Architecture diagrams
+
+PlantUML diagrams in [docs/puml/](docs/puml/):
+
+| Diagram | Description |
+|---------|-------------|
+| [architecture.puml](docs/puml/architecture.puml) | App component architecture |
+| [ui-navigation.puml](docs/puml/ui-navigation.puml) | Screen navigation flow |
+| [recognition-flow.puml](docs/puml/recognition-flow.puml) | Speech recognition sequence |
+| [model-download-flow.puml](docs/puml/model-download-flow.puml) | Model download sequence |
+| [download-states.puml](docs/puml/download-states.puml) | Download state machine |
+| [model-classes.puml](docs/puml/model-classes.puml) | Model manager classes |
+| [preferences-flow.puml](docs/puml/preferences-flow.puml) | DataStore preferences flow |
 
 ## Future work
 
