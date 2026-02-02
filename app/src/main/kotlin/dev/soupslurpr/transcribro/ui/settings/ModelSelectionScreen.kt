@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -27,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.soupslurpr.transcribro.R
 import dev.soupslurpr.transcribro.dataStore
 import dev.soupslurpr.transcribro.modelmanager.AvailableModels
+import dev.soupslurpr.transcribro.modelmanager.DownloadedFile
 import dev.soupslurpr.transcribro.modelmanager.DownloadState
 import dev.soupslurpr.transcribro.modelmanager.ModelDownloadManager
 import dev.soupslurpr.transcribro.modelmanager.WhisperModel
@@ -47,6 +51,11 @@ fun ModelSelectionScreen() {
     val downloadStates by modelDownloadManager.downloadStates.collectAsState(initial = emptyMap())
     val isCheckingUpdates by modelDownloadManager.isCheckingUpdates.collectAsState(initial = false)
     val coroutineScope = rememberCoroutineScope()
+
+    // Track downloaded files (refreshed when download states change)
+    val downloadedFiles = remember(downloadStates) {
+        mutableStateOf(modelDownloadManager.listDownloadedFiles())
+    }
 
     ScreenLazyColumn(
         modifier = Modifier.fillMaxSize()
@@ -128,6 +137,57 @@ fun ModelSelectionScreen() {
                     }
                 }
             )
+        }
+
+        // Downloaded files section
+        item {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            Text(
+                text = stringResource(R.string.model_files_on_disk),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Text(
+                text = stringResource(
+                    R.string.model_total_size,
+                    AvailableModels.formatSize(modelDownloadManager.getDownloadedModelsSize())
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        items(downloadedFiles.value.size) { index ->
+            val file = downloadedFiles.value[index]
+            DownloadedFileRow(
+                file = file,
+                onDelete = {
+                    modelDownloadManager.deleteFileByName(file.fileName)
+                    downloadedFiles.value = modelDownloadManager.listDownloadedFiles()
+                }
+            )
+        }
+
+        // Delete orphaned files button
+        val orphanedFiles = downloadedFiles.value.filter { it.matchedModel == null }
+        if (orphanedFiles.isNotEmpty()) {
+            item {
+                OutlinedButton(
+                    onClick = {
+                        modelDownloadManager.deleteOrphanedFiles()
+                        downloadedFiles.value = modelDownloadManager.listDownloadedFiles()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Text(
+                        text = "\uD83D\uDDD1\uFE0F ${stringResource(R.string.model_delete_orphaned, orphanedFiles.size)}" // 🗑️
+                    )
+                }
+            }
         }
     }
 }
@@ -308,6 +368,60 @@ fun ModelRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(start = 48.dp, top = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun DownloadedFileRow(
+    file: DownloadedFile,
+    onDelete: () -> Unit
+) {
+    val isOrphaned = file.matchedModel == null
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = if (isOrphaned) "\u26A0\uFE0F" else "\uD83D\uDCC4", // ⚠️ or 📄
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = file.fileName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isOrphaned) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Text(
+                text = if (isOrphaned) {
+                    "${AvailableModels.formatSize(file.sizeBytes)} - ${stringResource(R.string.model_orphaned_file)}"
+                } else {
+                    "${AvailableModels.formatSize(file.sizeBytes)} - ${file.matchedModel?.displayName}"
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (isOrphaned) {
+            Text(
+                text = "\uD83D\uDDD1\uFE0F", // 🗑️
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.clickable { onDelete() }
             )
         }
     }

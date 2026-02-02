@@ -24,6 +24,15 @@ sealed class DownloadState {
 }
 
 /**
+ * Represents a file on disk that may or may not match a known model.
+ */
+data class DownloadedFile(
+    val fileName: String,
+    val sizeBytes: Long,
+    val matchedModel: WhisperModel?
+)
+
+/**
  * Manages downloading, storing, and accessing Whisper models.
  */
 class ModelDownloadManager(private val context: Context) {
@@ -67,6 +76,54 @@ class ModelDownloadManager(private val context: Context) {
      */
     fun getDownloadedModelsSize(): Long {
         return modelsDir.listFiles()?.sumOf { it.length() } ?: 0L
+    }
+
+    /**
+     * List all files in the models directory.
+     * Returns info about each file including whether it matches a known model.
+     */
+    fun listDownloadedFiles(): List<DownloadedFile> {
+        val files = modelsDir.listFiles() ?: return emptyList()
+        return files
+            .filter { it.isFile && !it.name.endsWith(".tmp") }
+            .map { file ->
+                val matchedModel = AvailableModels.ALL_MODELS.find { it.fileName == file.name }
+                DownloadedFile(
+                    fileName = file.name,
+                    sizeBytes = file.length(),
+                    matchedModel = matchedModel
+                )
+            }
+            .sortedBy { it.fileName }
+    }
+
+    /**
+     * Get orphaned files (files that don't match any known model).
+     */
+    fun getOrphanedFiles(): List<DownloadedFile> {
+        return listDownloadedFiles().filter { it.matchedModel == null }
+    }
+
+    /**
+     * Delete a file by name.
+     */
+    fun deleteFileByName(fileName: String): Boolean {
+        val file = File(modelsDir, fileName)
+        return file.delete()
+    }
+
+    /**
+     * Delete all orphaned files.
+     */
+    fun deleteOrphanedFiles(): Int {
+        val orphaned = getOrphanedFiles()
+        var deleted = 0
+        orphaned.forEach { file ->
+            if (deleteFileByName(file.fileName)) {
+                deleted++
+            }
+        }
+        return deleted
     }
 
     /**
