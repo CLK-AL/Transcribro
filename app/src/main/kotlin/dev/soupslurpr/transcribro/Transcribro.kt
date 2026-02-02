@@ -58,6 +58,7 @@ import dev.soupslurpr.transcribro.ui.action_recognize_speech.ActionRecognizeSpee
 import dev.soupslurpr.transcribro.ui.donate.DonateStartScreen
 import dev.soupslurpr.transcribro.ui.settings.CreditsScreen
 import dev.soupslurpr.transcribro.ui.settings.LicenseScreen
+import dev.soupslurpr.transcribro.ui.settings.ModelSelectionScreen
 import dev.soupslurpr.transcribro.ui.settings.PrivacyPolicyScreen
 import dev.soupslurpr.transcribro.ui.settings.SettingsStartScreen
 import dev.soupslurpr.transcribro.ui.start.StartScreen
@@ -73,6 +74,7 @@ enum class TranscribroAppScreens(@StringRes val title: Int) {
     SettingsLicense(title = R.string.license),
     SettingsPrivacyPolicy(title = R.string.privacy_policy),
     SettingsCredits(title = R.string.credits),
+    SettingsModelSelection(title = R.string.model_selection),
     Donate(title = R.string.donate),
     DonateStart(title = R.string.donate),
 }
@@ -267,6 +269,9 @@ fun TranscribroApp(
                         },
                         onClickCredits = {
                             navController.navigate(TranscribroAppScreens.SettingsCredits.name)
+                        },
+                        onClickModelSelection = {
+                            navController.navigate(TranscribroAppScreens.SettingsModelSelection.name)
                         }
                     )
                 }
@@ -286,6 +291,11 @@ fun TranscribroApp(
                     CreditsScreen {
                         {} // No Rust?
                     }
+                }
+                composableWithDefaultSlideTransitions(
+                    route = TranscribroAppScreens.SettingsModelSelection
+                ) {
+                    ModelSelectionScreen()
                 }
             }
             navigationWithDefaultSlideTransitions(

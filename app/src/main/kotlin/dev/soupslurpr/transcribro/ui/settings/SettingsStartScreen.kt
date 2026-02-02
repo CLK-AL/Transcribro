@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -34,6 +35,7 @@ fun SettingsStartScreen(
     onClickLicense: () -> Unit,
     onClickPrivacyPolicy: () -> Unit,
     onClickCredits: () -> Unit,
+    onClickModelSelection: () -> Unit,
 ) {
     val preferencesViewModel: PreferencesViewModel = viewModel(
         factory = PreferencesViewModel.PreferencesViewModelFactory(LocalContext.current.dataStore)
@@ -125,6 +127,19 @@ fun SettingsStartScreen(
                         it
                     )
                 }
+            )
+        }
+        item {
+            SettingsCategory(
+                stringResource(R.string.model_selection_category)
+            )
+        }
+        item {
+            SettingsIconItem(
+                name = stringResource(id = R.string.model_selection_setting_name),
+                description = stringResource(id = R.string.model_selection_setting_description),
+                icon = Icons.Filled.GraphicEq,
+                onClick = onClickModelSelection
             )
         }
         item {

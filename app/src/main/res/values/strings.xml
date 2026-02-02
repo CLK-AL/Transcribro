@@ -36,4 +36,17 @@
     <string name="auto_start_recognition_setting_description">Automatically start recognition when switching from another input method</string>
     <string name="auto_send_transcription_setting_name">Auto-Send Transcription</string>
     <string name="auto_send_transcription_setting_description">Automatically send transcription when speech stops being detected</string>
+    <string name="model_selection">Model Selection</string>
+    <string name="model_selection_setting_name">Speech Recognition Model</string>
+    <string name="model_selection_setting_description">Select or download different Whisper models for transcription</string>
+    <string name="model_selection_category">Speech Recognition</string>
+    <string name="model_download">Download</string>
+    <string name="model_delete">Delete</string>
+    <string name="model_select">Select</string>
+    <string name="model_selected">Selected</string>
+    <string name="model_downloading">Downloading…</string>
+    <string name="model_download_error">Download failed</string>
+    <string name="model_built_in">Built-in</string>
+    <string name="model_downloaded">Downloaded</string>
+    <string name="model_not_downloaded">Not downloaded</string>
 </resources>

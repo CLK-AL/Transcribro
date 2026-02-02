@@ -81,6 +81,14 @@ class PreferencesViewModel(private val dataStore: DataStore<Preferences>) : View
                                 .first] ?: uiState.value
                                 .autoSendTranscription.second.value
                         )
+                    ),
+                    selectedModelId = Pair(
+                        uiState.value.selectedModelId.first,
+                        mutableStateOf(
+                            preferences[uiState.value.selectedModelId
+                                .first] ?: uiState.value
+                                .selectedModelId.second.value
+                        )
                     )
                 )
             }
@@ -88,9 +96,20 @@ class PreferencesViewModel(private val dataStore: DataStore<Preferences>) : View
     }
 
     /**
-     * Set a preference to a value and save to Preferences DataStore
+     * Set a boolean preference to a value and save to Preferences DataStore
      */
     fun setPreference(key: Preferences.Key<Boolean>, value: Boolean) {
+        viewModelScope.launch {
+            dataStore.edit { preferences ->
+                preferences[key] = value
+            }
+        }
+    }
+
+    /**
+     * Set a string preference to a value and save to Preferences DataStore
+     */
+    fun setPreference(key: Preferences.Key<String>, value: String) {
         viewModelScope.launch {
             dataStore.edit { preferences ->
                 preferences[key] = value

@@ -14,7 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.whispercpp.whisper.WhisperContext
+import dev.soupslurpr.transcribro.dataStore
+import dev.soupslurpr.transcribro.modelmanager.AvailableModels
+import dev.soupslurpr.transcribro.modelmanager.ModelDownloadManager
 import dev.soupslurpr.transcribro.recognitionservice.silerovad.SileroVadApi
 import dev.soupslurpr.transcribro.recognitionservice.silerovad.SileroVadDetector
 import dev.soupslurpr.transcribro.recognitionservice.silerovad.SileroVadLocalDataSource
@@ -25,6 +29,8 @@ import dev.soupslurpr.transcribro.recognitionservice.whisper.WhisperRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -59,16 +65,45 @@ class MainRecognitionService : RecognitionService() {
 
     private val transcribeJobs = mutableListOf<Job>()
 
+    private val modelDownloadManager by lazy { ModelDownloadManager(this) }
+
     private val whisperRepository: WhisperRepository =
         WhisperRepository(
             WhisperLocalDataSource(
                 whisperApi =
                 object : WhisperApi {
                     override fun getWhisperContext(): WhisperContext {
-                        return WhisperContext.createContextFromAsset(
-                            application.assets,
-                            "models/whisper/ggml-model-whisper-tiny.en-q8_0.bin"
-                        )
+                        // Get selected model from preferences
+                        val selectedModelId = runBlocking {
+                            dataStore.data.map { preferences ->
+                                preferences[stringPreferencesKey("SELECTED_MODEL_ID")]
+                                    ?: AvailableModels.getDefault().id
+                            }.first()
+                        }
+
+                        val model = AvailableModels.getById(selectedModelId)
+                            ?: AvailableModels.getDefault()
+
+                        return if (model.isBuiltIn) {
+                            // Load built-in model from assets
+                            WhisperContext.createContextFromAsset(
+                                application.assets,
+                                "models/whisper/${model.fileName}"
+                            )
+                        } else {
+                            // Load downloaded model from file
+                            val modelPath = modelDownloadManager.getModelPath(model)
+                            if (modelPath != null) {
+                                WhisperContext.createContextFromFile(modelPath)
+                            } else {
+                                // Model not downloaded, fall back to default
+                                val defaultModel = AvailableModels.getDefault()
+                                WhisperContext.createContextFromAsset(
+                                    application.assets,
+                                    "models/whisper/${defaultModel.fileName}"
+                                )
+                            }
+                        }
                     }
                 },
                 ioDispatcher = Dispatchers.IO,
