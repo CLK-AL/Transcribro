@@ -21,6 +21,8 @@ object AvailableModels {
 
     private const val WHISPER_CPP_BASE_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
     private const val IVRIT_GGML_BASE_URL = "https://huggingface.co/thewh1teagle/ivrit-ggml/resolve/main"
+    private const val IVRIT_AI_V3_BASE_URL = "https://huggingface.co/ivrit-ai/whisper-large-v3-ggml/resolve/main"
+    private const val IVRIT_AI_V3_TURBO_BASE_URL = "https://huggingface.co/ivrit-ai/whisper-large-v3-turbo-ggml/resolve/main"
 
     // ==================== Tiny Models ====================
 
@@ -259,6 +261,36 @@ object AvailableModels {
     )
 
     /**
+     * Hebrew Large V3 model from Ivrit AI (full precision GGML).
+     * Based on whisper-large-v3 fine-tuned for Hebrew.
+     */
+    val HEBREW_IVRIT_V3 = WhisperModel(
+        id = "ivrit-v3-large",
+        displayName = "Hebrew V3 Large",
+        description = "Large V3 fine-tuned for Hebrew. Best Hebrew quality.",
+        languages = listOf("he", "en"),
+        sizeBytes = 3_095_033_483L, // ~2.88 GB
+        downloadUrl = "$IVRIT_AI_V3_BASE_URL/ggml-model.bin",
+        fileName = "ggml-ivrit-v3-large.bin",
+        quantization = null
+    )
+
+    /**
+     * Hebrew Large V3 Turbo model from Ivrit AI (GGML).
+     * Faster version of Large V3 fine-tuned for Hebrew.
+     */
+    val HEBREW_IVRIT_V3_TURBO = WhisperModel(
+        id = "ivrit-v3-large-turbo",
+        displayName = "Hebrew V3 Large Turbo",
+        description = "Fast large model fine-tuned for Hebrew.",
+        languages = listOf("he", "en"),
+        sizeBytes = 1_624_555_275L, // ~1.5 GB
+        downloadUrl = "$IVRIT_AI_V3_TURBO_BASE_URL/ggml-model.bin",
+        fileName = "ggml-ivrit-v3-large-turbo.bin",
+        quantization = null
+    )
+
+    /**
      * All available models grouped by category.
      */
     val ALL_MODELS = listOf(
@@ -284,6 +316,8 @@ object AvailableModels {
         // Hebrew
         HEBREW_IVRIT_Q2K,
         HEBREW_IVRIT_Q4K,
+        HEBREW_IVRIT_V3_TURBO,
+        HEBREW_IVRIT_V3,
     )
 
     /**

@@ -26,7 +26,9 @@ enum class ModelSource(
     val branch: String = "main"
 ) {
     WHISPER_CPP("ggerganov", "whisper.cpp"),
-    IVRIT_GGML("thewh1teagle", "ivrit-ggml");
+    IVRIT_GGML("thewh1teagle", "ivrit-ggml"),
+    IVRIT_AI_V3("ivrit-ai", "whisper-large-v3-ggml"),
+    IVRIT_AI_V3_TURBO("ivrit-ai", "whisper-large-v3-turbo-ggml");
 
     val apiUrl: String
         get() = "https://huggingface.co/api/models/$repoOwner/$repoName/tree/$branch"
@@ -116,7 +118,31 @@ object RemoteModelSource {
         localFileName: String,
         remoteFiles: List<RemoteFile>
     ): RemoteFile? {
-        return remoteFiles.find { it.fileName == localFileName }
+        // First try exact match by file name
+        remoteFiles.find { it.fileName == localFileName }?.let { return it }
+
+        // Check if it's a known model with renamed file
+        val matchedModel = AvailableModels.ALL_MODELS.find { it.fileName == localFileName }
+        if (matchedModel != null) {
+            // Try to find remote file by matching download URL
+            return remoteFiles.find { matchedModel.downloadUrl.endsWith(it.fileName) }
+        }
+
+        return null
+    }
+
+    /**
+     * Find matching remote file for a known model.
+     */
+    fun findRemoteMatchForModel(
+        model: WhisperModel,
+        remoteFiles: List<RemoteFile>
+    ): RemoteFile? {
+        // First try exact match by file name
+        remoteFiles.find { it.fileName == model.fileName }?.let { return it }
+
+        // Try to find by download URL (for renamed files)
+        return remoteFiles.find { model.downloadUrl.endsWith(it.fileName) }
     }
 
     /**

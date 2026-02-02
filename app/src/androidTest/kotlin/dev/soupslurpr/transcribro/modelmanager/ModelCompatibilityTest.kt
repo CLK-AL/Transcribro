@@ -131,6 +131,26 @@ class ModelCompatibilityTest {
     }
 
     /**
+     * Test downloading and loading Hebrew Ivrit V3 Large model.
+     * NOTE: This is a very large model (~2.88 GB), run selectively.
+     */
+    @Test
+    fun testHebrewIvritV3Large_downloadAndLoad() = runBlocking {
+        val model = AvailableModels.HEBREW_IVRIT_V3
+        testModelDownloadAndLoad(model)
+    }
+
+    /**
+     * Test downloading and loading Hebrew Ivrit V3 Large Turbo model.
+     * NOTE: This is a large model (~1.5 GB), run selectively.
+     */
+    @Test
+    fun testHebrewIvritV3LargeTurbo_downloadAndLoad() = runBlocking {
+        val model = AvailableModels.HEBREW_IVRIT_V3_TURBO
+        testModelDownloadAndLoad(model)
+    }
+
+    /**
      * Verify all model URLs are accessible (HEAD request only, no download).
      */
     @Test

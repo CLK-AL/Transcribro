@@ -73,6 +73,58 @@ class RemoteModelSourceIntegrationTest {
     }
 
     /**
+     * Test fetching model list from ivrit-ai whisper-large-v3-ggml repository.
+     */
+    @Test
+    fun testFetchIvritAiV3Models() = runBlocking {
+        Log.d(TAG, "Fetching models from ivrit-ai/whisper-large-v3-ggml repo...")
+
+        val result = RemoteModelSource.fetchModelsFromSource(ModelSource.IVRIT_AI_V3)
+
+        assertThat(result.isSuccess)
+            .withFailureMessage("Failed to fetch ivrit-ai v3 models: ${result.exceptionOrNull()?.message}")
+            .isTrue()
+
+        val models = result.getOrNull()!!
+        assertThat(models).isNotEmpty()
+
+        Log.d(TAG, "Found ${models.size} .bin files in ivrit-ai/whisper-large-v3-ggml repo:")
+        models.forEach { file ->
+            Log.d(TAG, "  - ${file.fileName} (${AvailableModels.formatSize(file.sizeBytes)})")
+        }
+
+        // Verify ggml-model.bin is present
+        val fileNames = models.map { it.fileName }
+        assertThat(fileNames).contains("ggml-model.bin")
+    }
+
+    /**
+     * Test fetching model list from ivrit-ai whisper-large-v3-turbo-ggml repository.
+     */
+    @Test
+    fun testFetchIvritAiV3TurboModels() = runBlocking {
+        Log.d(TAG, "Fetching models from ivrit-ai/whisper-large-v3-turbo-ggml repo...")
+
+        val result = RemoteModelSource.fetchModelsFromSource(ModelSource.IVRIT_AI_V3_TURBO)
+
+        assertThat(result.isSuccess)
+            .withFailureMessage("Failed to fetch ivrit-ai v3 turbo models: ${result.exceptionOrNull()?.message}")
+            .isTrue()
+
+        val models = result.getOrNull()!!
+        assertThat(models).isNotEmpty()
+
+        Log.d(TAG, "Found ${models.size} .bin files in ivrit-ai/whisper-large-v3-turbo-ggml repo:")
+        models.forEach { file ->
+            Log.d(TAG, "  - ${file.fileName} (${AvailableModels.formatSize(file.sizeBytes)})")
+        }
+
+        // Verify ggml-model.bin is present
+        val fileNames = models.map { it.fileName }
+        assertThat(fileNames).contains("ggml-model.bin")
+    }
+
+    /**
      * Test fetching all remote models.
      */
     @Test
@@ -116,7 +168,8 @@ class RemoteModelSourceIntegrationTest {
         var missingCount = 0
 
         AvailableModels.ALL_MODELS.forEach { model ->
-            val remoteMatch = RemoteModelSource.findRemoteMatch(model.fileName, allRemoteFiles)
+            // Use findRemoteMatchForModel which handles renamed files
+            val remoteMatch = RemoteModelSource.findRemoteMatchForModel(model, allRemoteFiles)
             if (remoteMatch != null) {
                 matchCount++
                 Log.d(TAG, "  MATCH: ${model.displayName} -> ${remoteMatch.source.repoName}")

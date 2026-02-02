@@ -96,6 +96,46 @@ class RemoteModelSourceTest {
     }
 
     @Test
+    fun `findRemoteMatchForModel returns matching file by name`() {
+        val remoteFiles = listOf(
+            RemoteFile("ggml-tiny-q5_0.bin", "ggml-tiny-q5_0.bin", 26_000_000L,
+                "https://example.com/ggml-tiny-q5_0.bin", ModelSource.WHISPER_CPP)
+        )
+
+        val match = RemoteModelSource.findRemoteMatchForModel(AvailableModels.TINY_MULTILINGUAL, remoteFiles)
+
+        assertThat(match).isNotNull()
+        assertThat(match!!.fileName).isEqualTo("ggml-tiny-q5_0.bin")
+    }
+
+    @Test
+    fun `findRemoteMatchForModel returns matching file for renamed model`() {
+        // Simulating the ivrit-ai models where local fileName differs from remote
+        val remoteFiles = listOf(
+            RemoteFile("ggml-model.bin", "ggml-model.bin", 3_095_033_483L,
+                "https://huggingface.co/ivrit-ai/whisper-large-v3-ggml/resolve/main/ggml-model.bin",
+                ModelSource.IVRIT_AI_V3)
+        )
+
+        val match = RemoteModelSource.findRemoteMatchForModel(AvailableModels.HEBREW_IVRIT_V3, remoteFiles)
+
+        assertThat(match).isNotNull()
+        assertThat(match!!.fileName).isEqualTo("ggml-model.bin")
+    }
+
+    @Test
+    fun `findRemoteMatchForModel returns null for no match`() {
+        val remoteFiles = listOf(
+            RemoteFile("other.bin", "other.bin", 26_000_000L,
+                "https://example.com/other.bin", ModelSource.WHISPER_CPP)
+        )
+
+        val match = RemoteModelSource.findRemoteMatchForModel(AvailableModels.TINY_MULTILINGUAL, remoteFiles)
+
+        assertThat(match).isNull()
+    }
+
+    @Test
     fun `needsUpdate returns true when sizes differ significantly`() {
         val remoteFile = RemoteFile("model.bin", "model.bin", 26_000_000L,
             "https://example.com/model.bin", ModelSource.WHISPER_CPP)
@@ -128,8 +168,46 @@ class RemoteModelSourceTest {
     fun `ModelSource entries returns all sources`() {
         val sources = ModelSource.entries
 
-        assertThat(sources).hasSize(2)
+        assertThat(sources).hasSize(4)
         assertThat(sources).contains(ModelSource.WHISPER_CPP)
         assertThat(sources).contains(ModelSource.IVRIT_GGML)
+        assertThat(sources).contains(ModelSource.IVRIT_AI_V3)
+        assertThat(sources).contains(ModelSource.IVRIT_AI_V3_TURBO)
+    }
+
+    @Test
+    fun `ModelSource has correct repo info for IVRIT_AI_V3`() {
+        val source = ModelSource.IVRIT_AI_V3
+
+        assertThat(source.repoOwner).isEqualTo("ivrit-ai")
+        assertThat(source.repoName).isEqualTo("whisper-large-v3-ggml")
+        assertThat(source.branch).isEqualTo("main")
+    }
+
+    @Test
+    fun `ModelSource has correct repo info for IVRIT_AI_V3_TURBO`() {
+        val source = ModelSource.IVRIT_AI_V3_TURBO
+
+        assertThat(source.repoOwner).isEqualTo("ivrit-ai")
+        assertThat(source.repoName).isEqualTo("whisper-large-v3-turbo-ggml")
+        assertThat(source.branch).isEqualTo("main")
+    }
+
+    @Test
+    fun `ModelSource apiUrl is correctly formatted for ivrit-ai sources`() {
+        val v3Url = ModelSource.IVRIT_AI_V3.apiUrl
+        val v3TurboUrl = ModelSource.IVRIT_AI_V3_TURBO.apiUrl
+
+        assertThat(v3Url).isEqualTo("https://huggingface.co/api/models/ivrit-ai/whisper-large-v3-ggml/tree/main")
+        assertThat(v3TurboUrl).isEqualTo("https://huggingface.co/api/models/ivrit-ai/whisper-large-v3-turbo-ggml/tree/main")
+    }
+
+    @Test
+    fun `ModelSource downloadBaseUrl is correctly formatted for ivrit-ai sources`() {
+        val v3Url = ModelSource.IVRIT_AI_V3.downloadBaseUrl
+        val v3TurboUrl = ModelSource.IVRIT_AI_V3_TURBO.downloadBaseUrl
+
+        assertThat(v3Url).isEqualTo("https://huggingface.co/ivrit-ai/whisper-large-v3-ggml/resolve/main")
+        assertThat(v3TurboUrl).isEqualTo("https://huggingface.co/ivrit-ai/whisper-large-v3-turbo-ggml/resolve/main")
     }
 }
