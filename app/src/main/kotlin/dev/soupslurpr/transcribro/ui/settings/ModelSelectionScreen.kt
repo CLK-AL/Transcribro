@@ -7,16 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -73,184 +64,200 @@ fun ModelSelectionScreen() {
             val isDownloaded = modelDownloadManager.isModelDownloaded(model)
             val downloadState = downloadStates[model.id] ?: DownloadState.Idle
 
-            ModelCard(
+            ModelRow(
                 model = model,
                 isSelected = isSelected,
                 isDownloaded = isDownloaded,
                 downloadState = downloadState,
-                onSelect = {
-                    if (isDownloaded) {
-                        preferencesViewModel.setPreference(
-                            preferencesUiState.selectedModelId.first,
-                            model.id
-                        )
+                onCheckedChange = { checked ->
+                    if (checked) {
+                        if (isDownloaded) {
+                            // Select model
+                            preferencesViewModel.setPreference(
+                                preferencesUiState.selectedModelId.first,
+                                model.id
+                            )
+                        } else if (!model.isBuiltIn) {
+                            // Download model
+                            coroutineScope.launch {
+                                modelDownloadManager.downloadModel(model)
+                            }
+                        }
+                    } else {
+                        if (!model.isBuiltIn && isDownloaded) {
+                            // Delete model
+                            modelDownloadManager.deleteModel(model)
+                            // If deleted model was selected, switch to default
+                            if (isSelected) {
+                                preferencesViewModel.setPreference(
+                                    preferencesUiState.selectedModelId.first,
+                                    AvailableModels.getDefault().id
+                                )
+                            }
+                        }
                     }
-                },
-                onDownload = {
-                    coroutineScope.launch {
-                        modelDownloadManager.downloadModel(model)
-                    }
-                },
-                onDelete = {
-                    modelDownloadManager.deleteModel(model)
-                    // If deleted model was selected, switch to default
-                    if (isSelected) {
-                        preferencesViewModel.setPreference(
-                            preferencesUiState.selectedModelId.first,
-                            AvailableModels.getDefault().id
-                        )
-                    }
-                },
-                onCancelDownload = {
-                    modelDownloadManager.cancelDownload(model)
                 }
             )
         }
     }
 }
 
+/**
+ * Get emoji flag for language.
+ */
+private fun getLanguageEmoji(languages: List<String>): String {
+    return when {
+        languages.contains("he") -> "\uD83C\uDDEE\uD83C\uDDF1" // 🇮🇱
+        languages.contains("multilingual") -> "\uD83C\uDF0D" // 🌍
+        languages.contains("en") -> "\uD83C\uDDFA\uD83C\uDDF8" // 🇺🇸
+        else -> "\uD83C\uDF10" // 🌐
+    }
+}
+
+/**
+ * Get emoji number for quantization level.
+ */
+private fun getQuantizationEmoji(quantization: String?): String {
+    return when {
+        quantization == null -> ""
+        quantization.contains("2") -> "2\uFE0F\u20E3" // 2️⃣
+        quantization.contains("3") -> "3\uFE0F\u20E3" // 3️⃣
+        quantization.contains("4") -> "4\uFE0F\u20E3" // 4️⃣
+        quantization.contains("5") -> "5\uFE0F\u20E3" // 5️⃣
+        quantization.contains("6") -> "6\uFE0F\u20E3" // 6️⃣
+        quantization.contains("8") -> "8\uFE0F\u20E3" // 8️⃣
+        else -> ""
+    }
+}
+
 @Composable
-fun ModelCard(
+fun ModelRow(
     model: WhisperModel,
     isSelected: Boolean,
     isDownloaded: Boolean,
     downloadState: DownloadState,
-    onSelect: () -> Unit,
-    onDownload: () -> Unit,
-    onDelete: () -> Unit,
-    onCancelDownload: () -> Unit
+    onCheckedChange: (Boolean) -> Unit
 ) {
     val isDownloading = downloadState is DownloadState.Downloading
+    val languageEmoji = getLanguageEmoji(model.languages)
+    val quantEmoji = getQuantizationEmoji(model.quantization)
 
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = isDownloaded && !isDownloading) { onSelect() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
+            .clickable(enabled = !isDownloading) {
+                if (isDownloaded) {
+                    onCheckedChange(true) // Select
+                } else if (!model.isBuiltIn) {
+                    onCheckedChange(true) // Download
+                }
             }
-        )
+            .padding(vertical = 4.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Checkbox
+            Checkbox(
+                checked = isDownloaded,
+                onCheckedChange = { checked ->
+                    if (!isDownloading) {
+                        onCheckedChange(checked)
+                    }
+                },
+                enabled = !isDownloading && !model.isBuiltIn
+            )
+
+            // Model info
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "$languageEmoji $quantEmoji",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = model.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+                    if (isSelected) {
                         Text(
-                            text = model.displayName,
-                            style = MaterialTheme.typography.titleMedium,
+                            text = "\u2713", // ✓
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = stringResource(R.string.model_selected),
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                    Text(
-                        text = model.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = AvailableModels.formatSize(model.sizeBytes),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Action buttons
-                when {
-                    model.isBuiltIn -> {
-                        Text(
-                            text = stringResource(R.string.model_built_in),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    isDownloading -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
-                    isDownloaded -> {
-                        IconButton(onClick = onDelete) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = stringResource(R.string.model_delete),
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                    else -> {
-                        IconButton(onClick = onDownload) {
-                            Icon(
-                                imageVector = Icons.Default.Download,
-                                contentDescription = stringResource(R.string.model_download),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
                     }
                 }
-            }
-
-            // Download progress
-            if (downloadState is DownloadState.Downloading) {
-                Column(modifier = Modifier.padding(top = 8.dp)) {
-                    LinearProgressIndicator(
-                        progress = { downloadState.progress },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        text = "${stringResource(R.string.model_downloading)} ${(downloadState.progress * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-
-            // Error state
-            if (downloadState is DownloadState.Error) {
                 Text(
-                    text = "${stringResource(R.string.model_download_error)}: ${downloadState.message}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 8.dp)
+                    text = "${model.description} (${AvailableModels.formatSize(model.sizeBytes)})",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // Status text
-            if (!model.isBuiltIn && downloadState !is DownloadState.Downloading && downloadState !is DownloadState.Error) {
+            // Status indicator
+            when {
+                model.isBuiltIn -> {
+                    Text(
+                        text = "\uD83D\uDCE6", // 📦
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                isDownloading -> {
+                    Text(
+                        text = "\u23F3", // ⏳
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                isDownloaded -> {
+                    Text(
+                        text = "\u2705", // ✅
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                else -> {
+                    Text(
+                        text = "\u2B07\uFE0F", // ⬇️
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        }
+
+        // Download progress
+        if (downloadState is DownloadState.Downloading) {
+            Column(modifier = Modifier.padding(start = 48.dp, top = 4.dp, end = 16.dp)) {
+                LinearProgressIndicator(
+                    progress = { downloadState.progress },
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 Text(
-                    text = if (isDownloaded) {
-                        stringResource(R.string.model_downloaded)
-                    } else {
-                        stringResource(R.string.model_not_downloaded)
-                    },
+                    text = "${(downloadState.progress * 100).toInt()}%",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (isDownloaded) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
+        }
+
+        // Error state
+        if (downloadState is DownloadState.Error) {
+            Text(
+                text = "\u274C ${downloadState.message}", // ❌
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 48.dp, top = 4.dp)
+            )
         }
     }
 }
