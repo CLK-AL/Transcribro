@@ -54,5 +54,6 @@
     <string name="model_files_on_disk">Files on Disk</string>
     <string name="model_total_size">Total size: %1$s</string>
     <string name="model_orphaned_file">Unknown file (not a known model)</string>
+    <string name="model_remote_match">Found in %1$s (not in app list)</string>
     <string name="model_delete_orphaned">Delete %1$d unknown files</string>
 </resources>

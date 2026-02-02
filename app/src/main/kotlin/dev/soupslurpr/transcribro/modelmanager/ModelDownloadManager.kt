@@ -29,7 +29,8 @@ sealed class DownloadState {
 data class DownloadedFile(
     val fileName: String,
     val sizeBytes: Long,
-    val matchedModel: WhisperModel?
+    val matchedModel: WhisperModel?,
+    val matchedRemoteFile: RemoteFile? = null
 )
 
 /**
@@ -80,7 +81,7 @@ class ModelDownloadManager(private val context: Context) {
 
     /**
      * List all files in the models directory.
-     * Returns info about each file including whether it matches a known model.
+     * Returns info about each file including whether it matches a known model or remote file.
      */
     fun listDownloadedFiles(): List<DownloadedFile> {
         val files = modelsDir.listFiles() ?: return emptyList()
@@ -88,20 +89,22 @@ class ModelDownloadManager(private val context: Context) {
             .filter { it.isFile && !it.name.endsWith(".tmp") }
             .map { file ->
                 val matchedModel = AvailableModels.ALL_MODELS.find { it.fileName == file.name }
+                val matchedRemote = RemoteModelSource.findRemoteMatch(file.name, _lastRemoteFiles)
                 DownloadedFile(
                     fileName = file.name,
                     sizeBytes = file.length(),
-                    matchedModel = matchedModel
+                    matchedModel = matchedModel,
+                    matchedRemoteFile = matchedRemote
                 )
             }
             .sortedBy { it.fileName }
     }
 
     /**
-     * Get orphaned files (files that don't match any known model).
+     * Get orphaned files (files that don't match any known model or remote file).
      */
     fun getOrphanedFiles(): List<DownloadedFile> {
-        return listDownloadedFiles().filter { it.matchedModel == null }
+        return listDownloadedFiles().filter { it.matchedModel == null && it.matchedRemoteFile == null }
     }
 
     /**
@@ -126,32 +129,47 @@ class ModelDownloadManager(private val context: Context) {
         return deleted
     }
 
+    private var _lastRemoteFiles: List<RemoteFile> = emptyList()
+
     /**
-     * Check for updates for all downloaded models.
-     * Compares local file size with remote content-length.
+     * Get the last fetched remote files (available after checkForUpdates).
+     */
+    fun getLastRemoteFiles(): List<RemoteFile> = _lastRemoteFiles
+
+    /**
+     * Check for updates by syncing with remote model sources.
+     * Fetches file lists from HuggingFace and compares with local files.
      */
     suspend fun checkForUpdates(): Map<String, Boolean> = withContext(Dispatchers.IO) {
         _isCheckingUpdates.value = true
         val updates = mutableMapOf<String, Boolean>()
 
         try {
+            // Fetch remote file lists from all sources
+            val remoteResults = RemoteModelSource.fetchAllRemoteModels()
+            val allRemoteFiles = remoteResults.values
+                .mapNotNull { it.getOrNull() }
+                .flatten()
+
+            _lastRemoteFiles = allRemoteFiles
+
+            // Check each downloaded model against remote
             getDownloadedModels().forEach { model ->
                 updateDownloadState(model.id, DownloadState.Checking)
                 try {
                     val localFile = File(modelsDir, model.fileName)
                     val localSize = localFile.length()
 
-                    val url = URL(model.downloadUrl)
-                    val connection = url.openConnection() as HttpURLConnection
-                    connection.requestMethod = "HEAD"
-                    connection.connectTimeout = 10_000
-                    connection.setRequestProperty("User-Agent", "Transcribro-Android")
+                    // Find matching remote file
+                    val remoteFile = RemoteModelSource.findRemoteMatch(model.fileName, allRemoteFiles)
 
-                    val remoteSize = connection.contentLengthLong
-                    connection.disconnect()
+                    val hasUpdate = if (remoteFile != null) {
+                        RemoteModelSource.needsUpdate(localSize, remoteFile)
+                    } else {
+                        // No remote match found, check via HEAD request as fallback
+                        checkSingleModelUpdate(model, localSize)
+                    }
 
-                    // If remote size differs significantly (>1KB), mark as update available
-                    val hasUpdate = remoteSize > 0 && kotlin.math.abs(remoteSize - localSize) > 1024
                     updates[model.id] = hasUpdate
 
                     if (hasUpdate) {
@@ -169,6 +187,26 @@ class ModelDownloadManager(private val context: Context) {
         }
 
         updates
+    }
+
+    /**
+     * Fallback: check single model update via HEAD request.
+     */
+    private fun checkSingleModelUpdate(model: WhisperModel, localSize: Long): Boolean {
+        return try {
+            val url = URL(model.downloadUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "HEAD"
+            connection.connectTimeout = 10_000
+            connection.setRequestProperty("User-Agent", "Transcribro-Android")
+
+            val remoteSize = connection.contentLengthLong
+            connection.disconnect()
+
+            remoteSize > 0 && kotlin.math.abs(remoteSize - localSize) > 1024
+        } catch (e: Exception) {
+            false
+        }
     }
 
     /**

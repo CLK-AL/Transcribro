@@ -170,8 +170,8 @@ fun ModelSelectionScreen() {
             )
         }
 
-        // Delete orphaned files button
-        val orphanedFiles = downloadedFiles.value.filter { it.matchedModel == null }
+        // Delete orphaned files button (only truly orphaned, not remote matches)
+        val orphanedFiles = downloadedFiles.value.filter { it.matchedModel == null && it.matchedRemoteFile == null }
         if (orphanedFiles.isNotEmpty()) {
             item {
                 OutlinedButton(
@@ -379,6 +379,7 @@ fun DownloadedFileRow(
     onDelete: () -> Unit
 ) {
     val isOrphaned = file.matchedModel == null
+    val hasRemoteMatch = file.matchedRemoteFile != null
 
     Row(
         modifier = Modifier
@@ -397,27 +398,35 @@ fun DownloadedFileRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = if (isOrphaned) "\u26A0\uFE0F" else "\uD83D\uDCC4", // ⚠️ or 📄
+                    text = when {
+                        !isOrphaned -> "\uD83D\uDCC4" // 📄 known model
+                        hasRemoteMatch -> "\uD83D\uDD17" // 🔗 matches remote but not in app list
+                        else -> "\u26A0\uFE0F" // ⚠️ truly orphaned
+                    },
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
                     text = file.fileName,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (isOrphaned) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                    color = when {
+                        !isOrphaned -> MaterialTheme.colorScheme.onSurface
+                        hasRemoteMatch -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.error
+                    }
                 )
             }
             Text(
-                text = if (isOrphaned) {
-                    "${AvailableModels.formatSize(file.sizeBytes)} - ${stringResource(R.string.model_orphaned_file)}"
-                } else {
-                    "${AvailableModels.formatSize(file.sizeBytes)} - ${file.matchedModel?.displayName}"
+                text = when {
+                    !isOrphaned -> "${AvailableModels.formatSize(file.sizeBytes)} - ${file.matchedModel?.displayName}"
+                    hasRemoteMatch -> "${AvailableModels.formatSize(file.sizeBytes)} - ${stringResource(R.string.model_remote_match, file.matchedRemoteFile!!.source.repoName)}"
+                    else -> "${AvailableModels.formatSize(file.sizeBytes)} - ${stringResource(R.string.model_orphaned_file)}"
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        if (isOrphaned) {
+        if (isOrphaned && !hasRemoteMatch) {
             Text(
                 text = "\uD83D\uDDD1\uFE0F", // 🗑️
                 style = MaterialTheme.typography.bodyLarge,
